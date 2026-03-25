@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《大棋局2》- 翻書閱讀器</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4th/turn.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 顶部工具栏 */
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(26, 26, 46, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .toolbar-title {
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .toolbar-title span {
+            color: #e74c3c;
+        }
+        
+        .toolbar-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        
+        .toolbar-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .toolbar-btn:active {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        /* 进度条 */
+        .progress-container {
+            position: fixed;
+            top: 50px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            z-index: 999;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #3498db);
+            transition: width 0.3s ease;
+        }
+        
+        /* 书籍容器 */
+        .book-wrapper {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .book {
+            width: 900px;
+            height: 600px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+        }
+        
+        .book .page {
+            width: 450px;
+            height: 600px;
+            background: linear-gradient(to right, #fefefe 0%, #fff 3%, #fff 97%, #f5f5f5 100%);
+            position: absolute;
+            top: 0;
+            right: 0;
+            border-radius: 0 5px 5px 0;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .book .page-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .book .even .page {
+            right: auto;
+            left: 0;
+            border-radius: 5px 0 0 5px;
+            background: linear-gradient(to left, #fefefe 0%, #fff 3%, #fff 97%, #f5f5f5 100%);
+        }
+        
+        /* 页面内容样式 */
+        .page-content {
+            padding: 40px 50px;
+            height: 100%;
+            overflow-y: auto;
+        }
+        
+        .page-content::-webkit-scrollbar {
+            width: 5px;
+        }
+        
+        .page-content::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+        
+        .page-content::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 3px;
+        }
+        
+        .page-content h1 {
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e74c3c;
+        }
+        
+        .page-content h2 {
+            font-size: 18px;
+            color: #2c3e50;
+            margin: 20px 0 10px;
+        }
+        
+        .page-content h3 {
+            font-size: 15px;
+            color: #34495e;
+            margin: 15px 0 8px;
+        }
+        
+        .page-content p {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #333;
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+        
+        .page-content ul, .page-content ol {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        
+        .page-content li {
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 5px;
+        }
+        
+        .page-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 12px;
+        }
+        
+        .page-content th {
+            background: #2c3e50;
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 11px;
+        }
+        
+        .page-content td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 11px;
+        }
+        
+        .page-content tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        /* 页码 */
+        .page-number {
+            position: absolute;
+            bottom: 20px;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .book .odd .page-number {
+            right: 30px;
+        }
+        
+        .book .even .page-number {
+            left: 30px;
+        }
+        
+        /* 翻页按钮 */
+        .nav-buttons {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+        
+        .nav-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.95);
+            color: #1a1a2e;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .nav-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* 目录侧边栏 */
+        .sidebar {
+            position: fixed;
+            left: -320px;
+            top: 50px;
+            width: 300px;
+            height: calc(100vh - 50px);
+            background: rgba(22, 33, 62, 0.98);
+            z-index: 1001;
+            transition: left 0.3s ease;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .sidebar.open {
+            left: 0;
+        }
+        
+        .sidebar-overlay {
+            position: fixed;
+            top: 50px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .sidebar-overlay.show {
+            display: block;
+        }
+        
+        .sidebar h3 {
+            color: white;
+            font-size: 16px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .chapter-list {
+            list-style: none;
+        }
+        
+        .chapter-list li {
+            margin-bottom: 5px;
+        }
+        
+        .chapter-list a {
+            display: block;
+            padding: 10px 15px;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        
+        .chapter-list a:hover {
+            background: rgba(52, 152, 219, 0.3);
+            color: white;
+        }
+        
+        .chapter-list a.active {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 1000px) {
+            .book {
+                width: 100%;
+                height: 70vh;
+            }
+            
+            .book .page {
+                width: 50%;
+                height: 100%;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .toolbar-title {
+                font-size: 14px;
+            }
+            
+            .nav-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <button class="toolbar-btn" onclick="toggleSidebar()">☰ 目錄</button>
+            <span class="toolbar-title">大棋局<span>2</span></span>
+        </div>
+        <div>
+            <button class="toolbar-btn" onclick="goToPage(0)">封面</button>
+            <button class="toolbar-btn" onclick="location.href='./cover.html'">返回首頁</button>
+        </div>
+    </div>
+    
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+    </div>
+    
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <h3>目錄</h3>
+        <ul class="chapter-list">
+            <li><a href="#" onclick="goToPage(1); return false;">簡介</a></li>
+            <li><a href="#" onclick="goToPage(3); return false;">第一章：新型的霸權</a></li>
+            <li><a href="#" onclick="goToPage(15); return false;">第二章：歐亞大棋局</a></li>
+            <li><a href="#" onclick="goToPage(25); return false;">第三章：民主橋頭堡——歐洲</a></li>
+            <li><a href="#" onclick="goToPage(35); return false;">第四章：黑洞——俄羅斯</a></li>
+            <li><a href="#" onclick="goToPage(45); return false;">第五章：巴爾干——中亞</a></li>
+            <li><a href="#" onclick="goToPage(55); return false;">第六章：遠東之錨</a></li>
+            <li><a href="#" onclick="goToPage(65); return false;">第七章：結論</a></li>
+        </ul>
+    </div>
+    
+    <div class="book-wrapper">
+        <div class="book" id="book">
+            <!-- 封面 -->
+            <div class="page-wrapper">
+                <div class="page" style="background: linear-gradient(145deg, #2c3e50 0%, #1a252f 100%);">
+                    <div class="page-content" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white;">
+                        <div style="font-size: 48px; font-weight: 900; letter-spacing: 8px; margin-bottom: 10px;">大棋局<span style="color: #e74c3c; font-size: 60px;">2</span></div>
+                        <div style="font-size: 14px; color: rgba(255,255,255,0.7); letter-spacing: 4px; line-height: 1.8;">從1997到2026<br>地緣政治的演變與重構</div>
+                        <div style="margin-top: 50px; font-size: 12px; color: rgba(255,255,255,0.5);">點擊右側或按 → 翻頁</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 簡介 -->
+            <div class="page-wrapper">
+                <div class="page">
+                    <div class="page-content">
+                        <h1>《大棋局2》簡介</h1>
+                        <h2>從1997到2026</h2>
+                        <p>本書是對茲比格涅夫·布熱津斯基經典著作《大棋局：美國的首要地位及其地緣戰略》的續寫與更新。</p>
+                        <h3>核心命題</h3>
+                        <p>1997年，布熱津斯基撰寫《大棋局》時，美國正處於權力的巔峰，是「第一個也是最後一個全球性超級大國」。</p>
+                        <p>將近三十年後的2026年，世界格局已經發生了根本性的變化：</p>
+                        <ul>
+                            <li>美國從「唯一全球性大國」變成「雙極格局中的西方一極」</li>
+                            <li>中國崛起為與美國並列的全球性棋手</li>
+                            <li>俄羅斯從「地緣政治黑洞」變成中國的「資源附庸」</li>
+                            <li>歐洲從「民主橋頭堡」變成「地緣緩衝帶」</li>
+                        </ul>
+                    </div>
+                    <span class="page-number">1</span>
+                </div>
+            </div>
+            
+            <!-- 更多页面将通过 JavaScript 动态加载 -->
+        </div>
+    </div>
+    
+    <div class="nav-buttons">
+        <button class="nav-btn" id="prevBtn" onclick="prevPage()" disabled>←</button>
+        <button class="nav-btn" id="nextBtn" onclick="nextPage()">→</button>
+    </div>
+    
+    <script>
+        let currentPage = 0;
+        let totalPages = 70;
+        
+        // 翻页功能
+        function nextPage() {
+            if (currentPage < totalPages - 1) {
+                currentPage++;
+                updateUI();
+                console.log('翻到第', currentPage, '页');
+            }
+        }
+        
+        function prevPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                updateUI();
+                console.log('翻到第', currentPage, '页');
+            }
+        }
+        
+        function goToPage(page) {
+            currentPage = page;
+            updateUI();
+            toggleSidebar();
+        }
+        
+        function updateUI() {
+            // 更新进度条
+            const progress = (currentPage / (totalPages - 1)) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+            
+            // 更新按钮状态
+            document.getElementById('prevBtn').disabled = currentPage === 0;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages - 1;
+        }
+        
+        // 目录侧边栏
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
+        }
+        
+        // 键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                nextPage();
+            } else if (e.key === 'ArrowLeft') {
+                prevPage();
+            } else if (e.key === 'Escape') {
+                if (document.getElementById('sidebar').classList.contains('open')) {
+                    toggleSidebar();
+                }
+            }
+        });
+        
+        // 点击翻页
+        document.querySelector('.book-wrapper').addEventListener('click', function(e) {
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const width = rect.width;
+            
+            if (x > width * 0.6) {
+                nextPage();
+            } else if (x < width * 0.4) {
+                prevPage();
+            }
+        });
+        
+        // 初始化
+        updateUI();
+        
+        // 加载完整内容
+        console.log('翻书阅读器已初始化');
+        console.log('使用方法：点击左右两侧或使用方向键翻页');
+    </script>
+</body>
+</html>
