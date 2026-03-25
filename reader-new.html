@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《大棋局2》- 翻書閱讀</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 顶部工具栏 */
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(26, 26, 46, 0.98);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .menu-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .menu-btn:hover { background: rgba(255,255,255,0.2); }
+        
+        .toolbar-title {
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .toolbar-title span { color: #e74c3c; }
+        
+        /* 进度条 */
+        .progress-container {
+            position: fixed;
+            top: 50px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            z-index: 999;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #3498db);
+            transition: width 0.3s;
+        }
+        
+        /* 主容器 */
+        .main-container {
+            position: fixed;
+            top: 53px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+        }
+        
+        /* 侧边栏 */
+        .sidebar {
+            width: 280px;
+            background: #16213e;
+            height: 100%;
+            overflow-y: auto;
+            padding: 20px;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar h3 {
+            color: white;
+            font-size: 14px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .chapter-list {
+            list-style: none;
+        }
+        
+        .chapter-list li {
+            margin-bottom: 5px;
+        }
+        
+        .chapter-list a {
+            display: block;
+            padding: 10px 12px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .chapter-list a:hover {
+            background: rgba(52, 152, 219, 0.3);
+            color: white;
+        }
+        
+        .chapter-list a.active {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        /* 阅读区域 */
+        .reader-area {
+            flex: 1;
+            background: linear-gradient(135deg, #f5f5f0 0%, #e8e8e0 100%);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        /* 书页 */
+        .book-page {
+            flex: 1;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        /* 书页头部 */
+        .page-header {
+            padding: 20px 30px 10px;
+            border-bottom: 1px solid #eee;
+            background: #fafafa;
+        }
+        
+        .page-header h1 {
+            font-size: 22px;
+            color: #1a1a2e;
+            margin: 0;
+        }
+        
+        .page-header .chapter-title {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        /* 书页内容 */
+        .page-content {
+            flex: 1;
+            padding: 30px 40px;
+            overflow-y: auto;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #333;
+        }
+        
+        .page-content h2 {
+            font-size: 20px;
+            color: #2c3e50;
+            margin: 25px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e74c3c;
+        }
+        
+        .page-content h3 {
+            font-size: 17px;
+            color: #34495e;
+            margin: 20px 0 10px;
+        }
+        
+        .page-content p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        
+        .page-content ul, .page-content ol {
+            margin: 15px 0;
+            padding-left: 25px;
+        }
+        
+        .page-content li {
+            margin-bottom: 8px;
+        }
+        
+        /* 书页底部 */
+        .page-footer {
+            padding: 15px 30px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafafa;
+        }
+        
+        .page-number {
+            color: #999;
+            font-size: 13px;
+        }
+        
+        /* 翻页按钮 */
+        .nav-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: 'Noto Serif SC', serif;
+            transition: all 0.2s;
+        }
+        
+        .nav-btn:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+        
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                z-index: 999;
+                transition: left 0.3s;
+            }
+            
+            .sidebar.open {
+                left: 0;
+            }
+            
+            .page-content {
+                padding: 20px;
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <button class="menu-btn" onclick="toggleSidebar()">☰ 目錄</button>
+            <span class="toolbar-title">大棋局<span>2</span></span>
+        </div>
+        <div>
+            <button class="menu-btn" onclick="location.href='./cover.html'">返回封面</button>
+        </div>
+    </div>
+    
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+    </div>
+    
+    <div class="main-container">
+        <aside class="sidebar" id="sidebar">
+            <h3>目錄</h3>
+            <ul class="chapter-list">
+                <li><a href="./index.html" class="active">《大棋局2》簡介</a></li>
+                <li><a href="./第一章-新型的霸權.html">第一章：新型的霸權</a></li>
+                <li><a href="./第二章-歐亞大棋局.html">第二章：歐亞大棋局</a></li>
+                <li><a href="./第二章-歐亞大棋局的新格局.html">第二章：歐亞大棋局的新格局</a></li>
+                <li><a href="./第三章-民主橋頭堡歐洲.html">第三章：民主橋頭堡——歐洲</a></li>
+                <li><a href="./第四章-黑洞俄羅斯.html">第四章：黑洞——俄羅斯</a></li>
+                <li><a href="./第五章-巴爾干中亞.html">第五章：巴爾干——中亞</a></li>
+                <li><a href="./第六章-遠東之錨中國日本.html">第六章：遠東之錨</a></li>
+                <li><a href="./第七章-結論.html">第七章：結論</a></li>
+            </ul>
+        </aside>
+        
+        <main class="reader-area">
+            <div class="book-page">
+                <div class="page-header">
+                    <h1>《大棋局2》簡介</h1>
+                    <div class="chapter-title">從1997到2026——地緣政治的演變與重構</div>
+                </div>
+                
+                <div class="page-content">
+                    <h2>核心命題</h2>
+                    <p>本書是對茲比格涅夫·布熱津斯基經典著作《大棋局：美國的首要地位及其地緣戰略》的續寫與更新。</p>
+                    <p>1997年，布熱津斯基撰寫《大棋局》時，美國正處於權力的巔峰，是「第一個也是最後一個全球性超級大國」。</p>
+                    <p>將近三十年後的2026年，世界格局已經發生了根本性的變化：</p>
+                    <ul>
+                        <li>美國從「唯一全球性大國」變成「雙極格局中的西方一極」</li>
+                        <li>中國崛起為與美國並列的全球性棋手</li>
+                        <li>俄羅斯從「地緣政治黑洞」變成中國的「資源附庸」</li>
+                        <li>歐洲從「民主橋頭堡」變成「地緣緩衝帶」</li>
+                        <li>中亞從「歐亞巴爾干」變成「一帶一路核心區」</li>
+                    </ul>
+                    
+                    <h2>全書結構</h2>
+                    <p>本書共分七章，系統性地分析了從1997年到2026年近三十年間地緣政治格局的演變：</p>
+                    <ol>
+                        <li><strong>第一章：新型的霸權</strong>——美國霸權的四個支柱（文化、政治、經濟、軍事）的相對衰落</li>
+                        <li><strong>第二章：歐亞大棋局</strong>——棋手國家與地緣支軸國家的重新定義，雙極格局的形成</li>
+                        <li><strong>第三章：民主橋頭堡——歐洲</strong>——歐洲的分裂、烏克蘭戰爭衝擊、戰略自主困境</li>
+                        <li><strong>第四章：黑洞——俄羅斯</strong>——烏戰後果、中俄關係、後普京時代</li>
+                        <li><strong>第五章：歐亞大陸的巴爾干——中亞</strong>——一帶一路、中俄土博弈、能源管道</li>
+                        <li><strong>第六章：遠東之錨——中國與日本</strong>——中國崛起、中日關係、台灣問題</li>
+                        <li><strong>第七章：結論</strong>——1997年願景的破滅、新秩序特徵、美國的選擇</li>
+                    </ol>
+                    
+                    <h2>版本信息</h2>
+                    <p><strong>第一版</strong>：2026年3月24日完成</p>
+                    <p><strong>第二版（V2.0）</strong>：2026年3月25日更新</p>
+                    <ul>
+                        <li>新增：中東戰火（以色列-伊朗戰爭）分析</li>
+                        <li>新增：中日關係專節</li>
+                        <li>新增：台灣問題最後窗口期分析</li>
+                    </ul>
+                    
+                    <h2>總字數</h2>
+                    <p>約 37 萬字（第二版）</p>
+                </div>
+                
+                <div class="page-footer">
+                    <button class="nav-btn" disabled>← 上一頁</button>
+                    <span class="page-number">第 1 頁 / 7 章</span>
+                    <a href="./第一章-新型的霸權.html" class="nav-btn">下一頁 →</a>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+    </script>
+</body>
+</html>
