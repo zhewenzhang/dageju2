@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《大棋局2》- 開始閱讀</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Serif SC', serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 600px;
+        }
+        
+        .book-icon {
+            font-size: 80px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: white;
+            font-size: 42px;
+            margin-bottom: 10px;
+            letter-spacing: 8px;
+        }
+        
+        h1 span {
+            color: #e74c3c;
+            font-size: 52px;
+        }
+        
+        .subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 16px;
+            margin-bottom: 50px;
+            line-height: 1.6;
+        }
+        
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .option-btn {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 16px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        
+        .option-btn:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.4);
+            transform: translateY(-2px);
+        }
+        
+        .option-btn.primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border: none;
+            font-weight: 600;
+        }
+        
+        .option-btn.primary:hover {
+            background: linear-gradient(135deg, #2980b9, #2573a7);
+        }
+        
+        .icon {
+            font-size: 24px;
+        }
+        
+        .footer {
+            margin-top: 60px;
+            color: rgba(255,255,255,0.4);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="book-icon">📖</div>
+        <h1>大棋局<span>2</span></h1>
+        <p class="subtitle">從1997到2026<br>地緣政治的演變與重構</p>
+        
+        <div class="options">
+            <a href="./index.html" class="option-btn primary">
+                <span class="icon">📚</span>
+                <span>進入閱讀（推薦）</span>
+            </a>
+            
+            <a href="https://zhewenzhang.github.io/dageju2/第一章-新型的霸權.html" class="option-btn">
+                <span class="icon">📄</span>
+                <span>直接閱讀第一章</span>
+            </a>
+            
+            <a href="./cover.html" class="option-btn">
+                <span class="icon">🏠</span>
+                <span>返回封面</span>
+            </a>
+        </div>
+        
+        <p class="footer">約37萬字 · 七章 · 第二版</p>
+    </div>
+</body>
+</html>
