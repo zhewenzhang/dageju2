@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《大棋局 2》- 翻書閱讀</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: #0f0f1a;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 顶部栏 */
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(15, 15, 26, 0.98);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .menu-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+        
+        .menu-btn:hover { background: rgba(255,255,255,0.2); }
+        
+        .book-title {
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .book-title span { color: #e74c3c; }
+        
+        .topbar-right {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .nav-btn-small {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .nav-btn-small:hover { background: rgba(255,255,255,0.2); }
+        
+        /* 进度条 */
+        .progress-bar {
+            position: fixed;
+            top: 50px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            z-index: 999;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c 0%, #3498db 100%);
+            transition: width 0.3s ease;
+        }
+        
+        /* 主容器 */
+        .container {
+            position: fixed;
+            top: 53px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+        }
+        
+        /* 侧边目录 */
+        .sidebar {
+            width: 260px;
+            background: #16213e;
+            height: 100%;
+            overflow-y: auto;
+            padding: 20px 15px;
+            border-right: 1px solid rgba(255,255,255,0.08);
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar.hidden {
+            transform: translateX(-260px);
+        }
+        
+        .sidebar h3 {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .chapter-list {
+            list-style: none;
+        }
+        
+        .chapter-list li {
+            margin-bottom: 4px;
+        }
+        
+        .chapter-list a {
+            display: block;
+            padding: 10px 14px;
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+            line-height: 1.4;
+        }
+        
+        .chapter-list a:hover {
+            background: rgba(52, 152, 219, 0.25);
+            color: white;
+        }
+        
+        .chapter-list a.active {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+        
+        /* 阅读区 */
+        .reading-area {
+            flex: 1;
+            background: linear-gradient(135deg, #f8f6f0 0%, #e8e6e0 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            position: relative;
+        }
+        
+        /* 书本页面 */
+        .book-page {
+            width: 100%;
+            max-width: 900px;
+            height: calc(100vh - 120px);
+            background: white;
+            box-shadow: 
+                0 2px 20px rgba(0,0,0,0.12),
+                0 0 0 1px rgba(0,0,0,0.04);
+            border-radius: 3px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* 页面头部 */
+        .page-head {
+            padding: 25px 40px 15px;
+            background: linear-gradient(to bottom, #faf9f7, #f5f3f0);
+            border-bottom: 1px solid #e8e6e3;
+        }
+        
+        .page-head h1 {
+            font-size: 24px;
+            color: #1a1a2e;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .page-head .subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        /* 页面内容区 */
+        .page-body {
+            flex: 1;
+            padding: 30px 50px;
+            overflow-y: auto;
+            font-size: 17px;
+            line-height: 1.85;
+            color: #2c2c2c;
+        }
+        
+        .page-body h2 {
+            font-size: 20px;
+            color: #2c3e50;
+            margin: 30px 0 18px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e74c3c;
+            font-weight: 600;
+        }
+        
+        .page-body h3 {
+            font-size: 17px;
+            color: #34495e;
+            margin: 25px 0 12px;
+            font-weight: 600;
+        }
+        
+        .page-body p {
+            margin-bottom: 18px;
+            text-align: justify;
+            text-indent: 2em;
+        }
+        
+        .page-body p:first-of-type {
+            text-indent: 0;
+        }
+        
+        .page-body ul, .page-body ol {
+            margin: 18px 0;
+            padding-left: 30px;
+        }
+        
+        .page-body li {
+            margin-bottom: 10px;
+            line-height: 1.7;
+        }
+        
+        .page-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 14px;
+        }
+        
+        .page-body th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .page-body td {
+            padding: 10px 15px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .page-body tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        /* 页面底部 */
+        .page-foot {
+            padding: 15px 40px;
+            background: #faf9f7;
+            border-top: 1px solid #e8e6e3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .page-num {
+            color: #999;
+            font-size: 13px;
+        }
+        
+        .page-nav {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .page-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 22px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: 'Noto Serif SC', serif;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .page-btn:hover:not(:disabled) {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+        
+        .page-btn:disabled {
+            background: #d0d0d0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* 左右翻页热区 */
+        .flip-zone {
+            position: absolute;
+            top: 53px;
+            bottom: 0;
+            width: 100px;
+            cursor: pointer;
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        
+        .flip-zone:hover {
+            background: rgba(52, 152, 219, 0.08);
+        }
+        
+        .flip-zone.left { left: 0; }
+        .flip-zone.right { right: 0; }
+        
+        .flip-arrow {
+            width: 45px;
+            height: 45px;
+            background: rgba(52, 152, 219, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .flip-zone:hover .flip-arrow {
+            opacity: 1;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 900px) {
+            .book-page {
+                max-width: 100%;
+                height: calc(100vh - 100px);
+            }
+            
+            .page-body {
+                padding: 25px 30px;
+                font-size: 16px;
+            }
+            
+            .flip-zone {
+                width: 60px;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 53px;
+                z-index: 998;
+                box-shadow: 2px 0 20px rgba(0,0,0,0.3);
+            }
+            
+            .page-head h1 {
+                font-size: 20px;
+            }
+            
+            .page-body {
+                padding: 20px 25px;
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-left">
+            <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+            <span class="book-title">大棋局<span>2</span></span>
+        </div>
+        <div class="topbar-right">
+            <button class="nav-btn-small" onclick="location.href='./cover.html'">封面</button>
+            <button class="nav-btn-small" onclick="goToPage(0)">首頁</button>
+        </div>
+    </div>
+    
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    
+    <div class="container">
+        <aside class="sidebar" id="sidebar">
+            <h3>📖 目錄</h3>
+            <ul class="chapter-list">
+                <li><a href="#" onclick="loadChapter(0); return false;" class="active" data-chapter="0">簡介</a></li>
+                <li><a href="#" onclick="loadChapter(1); return false;" data-chapter="1">第一章：新型的霸權</a></li>
+                <li><a href="#" onclick="loadChapter(2); return false;" data-chapter="2">第二章：歐亞大棋局</a></li>
+                <li><a href="#" onclick="loadChapter(3); return false;" data-chapter="3">第三章：民主橋頭堡——歐洲</a></li>
+                <li><a href="#" onclick="loadChapter(4); return false;" data-chapter="4">第四章：黑洞——俄羅斯</a></li>
+                <li><a href="#" onclick="loadChapter(5); return false;" data-chapter="5">第五章：巴爾干——中亞</a></li>
+                <li><a href="#" onclick="loadChapter(6); return false;" data-chapter="6">第六章：遠東之錨</a></li>
+                <li><a href="#" onclick="loadChapter(7); return false;" data-chapter="7">第七章：結論</a></li>
+            </ul>
+        </aside>
+        
+        <main class="reading-area">
+            <div class="flip-zone left" onclick="prevPage()">
+                <div class="flip-arrow">←</div>
+            </div>
+            
+            <div class="book-page">
+                <div class="page-head">
+                    <h1 id="chapterTitle">《大棋局 2》簡介</h1>
+                    <div class="subtitle" id="chapterSubtitle">從 1997 到 2026——地緣政治的演變與重構</div>
+                </div>
+                
+                <div class="page-body" id="pageContent">
+                    <p>本書是對茲比格涅夫·布熱津斯基經典著作《大棋局：美國的首要地位及其地緣戰略》的續寫與更新。</p>
+                    
+                    <h2>核心命題</h2>
+                    <p>1997 年，布熱津斯基撰寫《大棋局》時，美國正處於權力的巔峰，是「第一個也是最後一個全球性超級大國」。</p>
+                    
+                    <p>將近三十年後的 2026 年，世界格局已經發生了根本性的變化：</p>
+                    <ul>
+                        <li>美國從「唯一全球性大國」變成「雙極格局中的西方一極」</li>
+                        <li>中國崛起為與美國並列的全球性棋手</li>
+                        <li>俄羅斯從「地緣政治黑洞」變成中國的「資源附庸」</li>
+                        <li>歐洲從「民主橋頭堡」變成「地緣緩衝帶」</li>
+                        <li>中亞從「歐亞巴爾干」變成「一帶一路核心區」</li>
+                    </ul>
+                    
+                    <h2>全書結構</h2>
+                    <p>全書共七章，從美國霸權的衰落開始，逐一分析歐亞大陸各個區域的地緣政治變化，最後探討美國在雙極格局下的戰略選擇。</p>
+                    
+                    <h2>版本信息</h2>
+                    <ul>
+                        <li><strong>第一版</strong>：2026 年 3 月 24 日完成</li>
+                        <li><strong>第二版（V2.0）</strong>：2026 年 3 月 25 日更新
+                            <ul>
+                                <li>新增：中東戰火（以色列 - 伊朗戰爭）分析</li>
+                                <li>新增：中日關係專節</li>
+                                <li>新增：台灣問題最後窗口期分析</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    
+                    <p><strong>總字數</strong>：約 37 萬字（第二版）</p>
+                </div>
+                
+                <div class="page-foot">
+                    <span class="page-num" id="pageNum">第 1 頁 / 共 8 章</span>
+                    <div class="page-nav">
+                        <button class="page-btn" id="prevBtn" onclick="prevPage()" disabled>← 上一頁</button>
+                        <button class="page-btn" id="nextBtn" onclick="nextPage()">下一頁 →</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flip-zone right" onclick="nextPage()">
+                <div class="flip-arrow">→</div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        let currentChapter = 0;
+        const totalChapters = 8;
+        
+        // 章节数据
+        const chapters = [
+            {
+                title: "《大棋局 2》簡介",
+                subtitle: "從 1997 到 2026——地緣政治的演變與重構",
+                content: `
+                    <p>本書是對茲比格涅夫·布熱津斯基經典著作《大棋局：美國的首要地位及其地緣戰略》的續寫與更新。</p>
+                    
+                    <h2>核心命題</h2>
+                    <p>1997 年，布熱津斯基撰寫《大棋局》時，美國正處於權力的巔峰，是「第一個也是最後一個全球性超級大國」。</p>
+                    
+                    <p>將近三十年後的 2026 年，世界格局已經發生了根本性的變化：</p>
+                    <ul>
+                        <li>美國從「唯一全球性大國」變成「雙極格局中的西方一極」</li>
+                        <li>中國崛起為與美國並列的全球性棋手</li>
+                        <li>俄羅斯從「地緣政治黑洞」變成中國的「資源附庸」</li>
+                        <li>歐洲從「民主橋頭堡」變成「地緣緩衝帶」</li>
+                        <li>中亞從「歐亞巴爾干」變成「一帶一路核心區」</li>
+                    </ul>
+                    
+                    <h2>版本信息</h2>
+                    <ul>
+                        <li><strong>第一版</strong>：2026 年 3 月 24 日完成</li>
+                        <li><strong>第二版（V2.0）</strong>：2026 年 3 月 25 日更新
+                            <ul>
+                                <li>新增：中東戰火（以色列 - 伊朗戰爭）分析</li>
+                                <li>新增：中日關係專節</li>
+                                <li>新增：台灣問題最後窗口期分析</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    
+                    <p><strong>總字數</strong>：約 37 萬字（第二版）</p>
+                `
+            },
+            {
+                title: "第一章：新型的霸權",
+                subtitle: "美國霸權的四個支柱及其相對衰落",
+                content: `
+                    <p>1997 年，當布熱津斯基撰寫《大棋局》時，美國正處於其權力的巔峰。蘇聯解體已過六年，冷戰的勝利似乎驗證了西方自由民主制度的普遍優越性。</p>
+                    
+                    <h2>導言：從「歷史終結」到「大國競爭」</h2>
+                    <p>布熱津斯基在那個歷史時刻寫道：「美國是第一個也是最後一個全球性超級大國。」這句話在當時幾乎是不言而喻的真理。</p>
+                    
+                    <p>然而，將近三十年後的 2026 年，當我們回望這段歷史，會發現布熱津斯基的判斷既是對的，也是錯的。對的是，美國確實在 1990 年代達到了前所未有的全球影響力；錯的是，這種「唯一全球性大國」的地位並非「最後一個」，而是一個歷史窗口期的暫時現象。</p>
+                    
+                    <h2>第一節：文化吸引力的衰退與重組</h2>
+                    <p>在布熱津斯基的時代，美國的文化影響力是無與倫比的。好萊塢電影、麥當勞、可口可樂代表著全球化的象徵。然而到了 2026 年，這種文化霸權已經出現了明顯的裂痕。</p>
+                    
+                    <p>中國的 TikTok、韓國的 K-pop、中國的短劇正在全球市場快速擴張，挑戰了美國文化的單一霸權。</p>
+                    
+                    <h2>第二節：政治制度的極化與失能</h2>
+                    <p>美國的政治制度面臨著嚴重的危機：政治極化、國會僵局、選舉爭議、1 月 6 日事件。這些問題暴露了美國民主制度的脆弱性。</p>
+                    
+                    <h2>第三節：經濟實力的相對衰落</h2>
+                    <p>中國的 GDP（按購買力平價計算）已經在 2014 年超過美國。中國在全球製造業、貿易、科技等領域的份額持續上升。</p>
+                    
+                    <h2>第四節：軍事優勢的區域化挑戰</h2>
+                    <p>雖然美軍在全球範圍內仍佔優勢，但在西太平洋，中國的 A2/AD 能力已經挑戰了美國的傳統優勢。</p>
+                    
+                    <h2>本章小結</h2>
+                    <p>美國已經從「唯一全球性大國」變成了「雙極格局中的西方一極」。這種轉變不是失敗，而是歷史的常態。</p>
+                `
+            },
+            {
+                title: "第二章：歐亞大棋局",
+                subtitle: "棋手國家與地緣支軸國家的重新定義",
+                content: `
+                    <p>1997 年，布熱津斯基在《大棋局》中提出了兩個核心概念：「棋手國家」和「地緣支軸國家」。這個框架在 1997 年是有效的，但將近三十年後的 2026 年，這個框架已經需要根本性的修正。</p>
+                    
+                    <h2>第一節：棋手國家的新定義</h2>
+                    <p>我們提出 2026 年的「棋手國家」新定義，採用三層結構：</p>
+                    
+                    <h3>第一層：全球性棋手</h3>
+                    <p>具備全球範圍內主動塑造國際秩序能力的國家。2026 年的全球性棋手：美國、中國。</p>
+                    
+                    <h3>第二層：地區性棋手</h3>
+                    <p>在特定地理區域內具備主動塑造秩序能力的國家。包括：日本、韓國、印尼、印度、沙特、伊朗、以色列、法國、德國、土耳其、俄羅斯、巴西等。</p>
+                    
+                    <h3>第三層：潛在棋手</h3>
+                    <p>具備成為地區性甚至全球性棋手的潛力，但尚未完全實現這一潛力的國家。包括：越南、波蘭、哈薩克斯坦、墨西哥等。</p>
+                    
+                    <h2>第二節：地緣支軸國家的演變</h2>
+                    <p>我們將「地緣支軸國家」分為三個子類別：</p>
+                    
+                    <h3>關鍵支軸國家</h3>
+                    <p>戰略價值極高，其命運可能引發全球性危機。包括：台灣、烏克蘭、以色列。</p>
+                    
+                    <h3>潛在棋手支軸</h3>
+                    <p>具備支軸國家的地緣重要性，同時具備向棋手國家升級潛力。包括：印度、土耳其、印尼、哈薩克斯坦、波蘭。</p>
+                    
+                    <h3>搖擺支軸國家</h3>
+                    <p>地理位置重要，但內部脆弱或政策搖擺。包括：埃及、巴基斯坦、緬甸、朝鮮、白俄羅斯。</p>
+                    
+                    <h2>本章小結</h2>
+                    <p>在雙極格局下，歐亞大陸的地緣政治呈現出新的特徵：兩個體系的形成、中間地帶的戰略價值上升、地區性棋手的戰略空間擴大、關鍵支軸國家的風險上升。</p>
+                `
+            },
+            {
+                title: "第三章：民主橋頭堡——歐洲",
+                subtitle: "歐洲的分裂、烏克蘭戰爭衝擊、戰略自主困境",
+                content: `
+                    <p>1997 年，當布熱津斯基撰寫《大棋局》時，歐洲正處於其歷史上最為自信和樂觀的時期之一。冷戰的勝利似乎證明了西方自由民主制度的普遍優越性，歐洲一體化進程正如火如荼地推進。</p>
+                    
+                    <h2>第一節：歐洲的分裂——東西對立與南北鴻溝</h2>
+                    
+                    <h3>東西歐對立</h3>
+                    <p>東西歐的分裂根植於截然不同的歷史記憶。西歐的記憶是二戰的浩劫、歐洲一體化的成功；東歐的記憶是蘇聯的佔領、共產主義的壓迫、對俄羅斯的恐懼。</p>
+                    
+                    <p>這種歷史記憶的差異導致了對俄羅斯政策的根本分歧：西歐主張接觸與合作，東歐主張遏制與孤立。</p>
+                    
+                    <h3>南北歐對立</h3>
+                    <p>北歐國家擁有強大的製造業和穩健的財政狀況；南歐國家則面臨高額公共債務、青年失業率居高不下的困境。</p>
+                    
+                    <h2>第二節：烏克蘭戰爭的衝擊</h2>
+                    
+                    <h3>能源危機</h3>
+                    <p>歐洲對俄羅斯能源的依賴是烏克蘭戰爭最深刻的教訓之一。德國 55% 的天然氣、34% 的石油進口來自俄羅斯。</p>
+                    
+                    <p>2022 年，隨著歐盟對俄羅斯實施制裁和俄羅斯削減供應，歐洲經歷了嚴重的能源危機：天然氣價格上漲超過 400%，電價一度超過每兆瓦時 1000 歐元。</p>
+                    
+                    <h3>經濟衝擊</h3>
+                    <p>烏克蘭戰爭終結了歐洲的增長周期，將歐洲推入了一個低增長、高通脹的「滯脹」時代。</p>
+                    
+                    <h2>第三節：軍事無能與美國依賴</h2>
+                    <p>烏克蘭戰爭暴露了歐洲軍事能力的嚴重不足。冷戰結束後，歐洲國家普遍享受了「和平紅利」，大幅削減軍費和軍隊規模。</p>
+                    
+                    <h2>第四節：歐洲的戰略選擇</h2>
+                    <p>歐洲面臨三條道路的選擇：強化北約、戰略自主、與俄和解。這三條道路各有優劣，反映了歐洲內部不同的利益集團和價值觀。</p>
+                    
+                    <h2>本章小結</h2>
+                    <p>歐洲正從「民主橋頭堡」變成「地緣緩衝帶」。歐洲不再是冷戰後那個自信、統一的行為體，而是一個分裂、焦慮、依賴的地區。</p>
+                `
+            },
+            {
+                title: "第四章：黑洞——俄羅斯",
+                subtitle: "烏戰後果、中俄關係、後普京時代",
+                content: `
+                    <p>1997 年，當布熱津斯基撰寫《大棋局》時，俄羅斯正處於其現代歷史上最為虛弱和混亂的時期。布熱津斯基在那個歷史時刻做出了一個著名的判斷：「俄羅斯首先是一個地緣政治的黑洞。」</p>
+                    
+                    <h2>第一節：烏戰的戰略後果</h2>
+                    
+                    <h3>戰爭的爆發與背景</h3>
+                    <p>2022 年 2 月 24 日，俄羅斯對烏克蘭發動全面入侵。普京發動戰爭的動機是多層次的，但核心是一個帝國復興的夢想。</p>
+                    
+                    <h3>戰爭進程與俄羅斯能力的暴露</h3>
+                    <p>俄羅斯最初的計劃是一場「閃電戰」，但這個計劃在幾天內就崩潰了。戰爭暴露了俄羅斯軍事能力的多個結構性問題：後勤與指揮的失敗、裝備與技術的差距、人力資源的困境。</p>
+                    
+                    <h2>第二節：俄羅斯的新定位——中國的資源附庸</h2>
+                    
+                    <h3>從「戰略夥伴」到「不對稱依賴」</h3>
+                    <p>烏克蘭戰爭加速了俄羅斯與中國關係的轉變。2022 年 2 月，普京訪問北京，與習近平發表聲明，宣布中俄關係「無上限」。</p>
+                    
+                    <h3>能源依賴與經濟附庸化</h3>
+                    <p>俄羅斯在戰後迅速增加了對中國的石油出口。俄羅斯被迫接受折扣價格，因為失去歐洲市場後，中國幾乎是唯一的大買家。</p>
+                    
+                    <h2>第三節：「沒有烏克蘭，俄羅斯不再是帝國」的驗證</h2>
+                    <p>布熱津斯基在《大棋局》中提出的「沒有烏克蘭，俄羅斯不再是帝國」這一命題，在 2020 年代得到了強烈驗證。</p>
+                    
+                    <h2>第四節：後普京時代的不確定性</h2>
+                    <p>普京政權是一個典型的「強人」統治。後普京時代的俄羅斯充滿不確定性。我們可以構想幾種可能的情景：有序繼承、精英內鬥、軍事政變、顏色革命、解體風險。</p>
+                    
+                    <h2>本章小結</h2>
+                    <p>烏克蘭戰爭驗證了布熱津斯基的預言。俄羅斯正在成為中國的資源附庸。後普京時代充滿不確定性。俄羅斯面臨戰略選擇的困境。</p>
+                `
+            },
+            {
+                title: "第五章：歐亞大陸的巴爾干——中亞",
+                subtitle: "一帶一路、中俄土博弈、能源管道",
+                content: `
+                    <p>1997 年，布熱津斯基在《大棋局》中將中亞稱為「歐亞大陸的巴爾干」。這個比喻令人不安，因為它喚起了人們對 20 世紀初巴爾干半島的記憶。</p>
+                    
+                    <h2>第一節：中亞地緣格局的歷史演變</h2>
+                    
+                    <h3>中亞的戰略價值</h3>
+                    <p>中亞位於歐亞大陸的中心，是連接東西方的關鍵節點。中亞擁有豐富的能源和礦產資源：哈薩克斯坦的石油、土庫曼斯坦的天然氣、哈薩克斯坦的鈾礦。</p>
+                    
+                    <h3>蘇聯時代：俄羅斯帝國的延伸</h3>
+                    <p>蘇聯將中亞劃分為五個加盟共和國，奠定了現代中亞國家版圖。蘇聯解體後，中亞五國獨立，但面臨嚴峻挑戰。</p>
+                    
+                    <h2>第二節：中國「一帶一路」的進入</h2>
+                    
+                    <h3>「一帶一路」的戰略意圖</h3>
+                    <p>2013 年，習近平在哈薩克斯坦納扎爾巴耶夫大學提出「絲綢之路經濟帶」倡議，標誌著中國對中亞戰略的升級。</p>
+                    
+                    <h3>基礎設施建設</h3>
+                    <p>中國投資建設公路、鐵路、管道、電網。中亞 - 中國天然氣管道網絡建成，中歐班列成為連接中國與歐洲的重要通道。</p>
+                    
+                    <h2>第三節：新玩家的三角博弈</h2>
+                    
+                    <h3>中國的經濟主導</h3>
+                    <p>2024 年，中國與中亞五國的貿易額超過 500 億美元。中國是中亞最大的貿易夥伴、投資來源和債權國。</p>
+                    
+                    <h3>俄羅斯的安全角色</h3>
+                    <p>俄羅斯仍是中亞安全的主要保障者。集體安全條約組織（CSTO）仍是中亞安全架構的核心。</p>
+                    
+                    <h3>土耳其的文化影響</h3>
+                    <p>土耳其與中亞國家有共同的突厥文化根源。土耳其的電視、音樂、教育在中亞流行。</p>
+                    
+                    <h2>本章小結</h2>
+                    <p>中亞從「歐亞巴爾干」變成「一帶一路核心區」。中國成為中亞的經濟主導，俄羅斯維持安全影響，土耳其發揮文化影響力。</p>
+                `
+            },
+            {
+                title: "第六章：遠東之錨——中國與日本",
+                subtitle: "中國崛起、
