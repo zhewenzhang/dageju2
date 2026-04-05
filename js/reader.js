@@ -1,27 +1,25 @@
-// 📚 电子书阅读器 - 基于 epub.js 增强版
+// 📚 电子书阅读器 - 简化版（纯HTML模式）
 
 (function() {
-    // ========== 全局变量 ==========
-    let book = null;
-    let rendition = null;
+    // 全局变量
     let currentBook = null;
     let currentChapter = 0;
     let totalChapters = 0;
-    let isPaginated = true; // 分页模式
     
-    // ========== 书籍配置库 ==========
+    // 书籍配置库
     const BOOKS_LIBRARY = {
         'dageju2': typeof DAGEJU2_CONFIG !== 'undefined' ? DAGEJU2_CONFIG : null
     };
     
-    // ========== 初始化 ==========
+    // 初始化
     document.addEventListener('DOMContentLoaded', function() {
         initTheme();
         initFontSize();
         initBook();
+        setupKeyboardNav();
     });
     
-    // ========== 书籍初始化 ==========
+    // 书籍初始化
     function initBook() {
         const urlParams = new URLSearchParams(window.location.search);
         let bookId = urlParams.get('book') || 'dageju2';
@@ -43,206 +41,80 @@
         // 设置书名
         document.getElementById('bookTitle').textContent = currentBook.title || '电子书';
         
-        // 创建虚拟 EPUB（从 HTML 内容）
-        createVirtualEpub();
-        
         // 加载目录
         renderToc();
         
-        // 恢复进度
+        // 恢复阅读进度
         restoreProgress();
-
-        // 初始化书签
-        renderBookmarks();
-        updateBookmarkButton();
-
-        // 键盘事件
-        setupKeyboardNav();
-
-        // 触摸滑动翻页
-        setupTouchSwipe();
-
-        // 双击切换导航栏显示
-        setupDoubleTap();
-    }
-
-    // ========== 双击切换导航栏显示 ==========
-    function setupDoubleTap() {
-        const container = document.getElementById('viewer');
-        if (!container) return;
-
-        let lastTap = 0;
-        container.addEventListener('touchend', function(e) {
-            const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTap;
-
-            if (tapLength < 300 && tapLength > 0) {
-                // 双击事件 - 切换导航栏
-                toggleHeaderFooter();
-                e.preventDefault();
-            }
-            lastTap = currentTime;
-        }, { passive: false });
-    }
-
-    function toggleHeaderFooter() {
-        const header = document.getElementById('readerHeader');
-        const footer = document.getElementById('readerFooter');
-
-        header.classList.toggle('hidden');
-        footer.classList.toggle('hidden');
-    }
-
-    // ========== 触摸滑动翻页 ==========
-    function setupTouchSwipe() {
-        const container = document.getElementById('viewer');
-        if (!container) return;
-
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let touchEndX = 0;
-        let touchEndY = 0;
-        const minSwipeDistance = 50;
-
-        container.addEventListener('touchstart', function(e) {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, { passive: true });
-
-        container.addEventListener('touchend', function(e) {
-            touchEndX = e.changedTouches[0].screenX;
-            touchEndY = e.changedTouches[0].screenY;
-            handleSwipe();
-        }, { passive: true });
-
-        function handleSwipe() {
-            const deltaX = touchEndX - touchStartX;
-            const deltaY = touchEndY - touchStartY;
-
-            // 检查是否为水平滑动（忽略垂直滑动）
-            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
-                if (deltaX < 0) {
-                    // 向左滑 -> 下一页
-                    nextPage();
-                } else {
-                    // 向右滑 -> 上一页
-                    prevPage();
-                }
-            }
-        }
+        
+        // 显示当前章节
+        loadChapter(currentChapter);
     }
     
-    // ========== 创建虚拟 EPUB ==========
-    function createVirtualEpub() {
-        // 创建虚拟的 EPUB 包
-        const bookData = {
-            metadata: {
-                title: currentBook.title,
-                author: currentBook.author || '未知作者',
-                language: 'zh-TW'
-            },
-            spine: [],
-            manifest: {}
-        };
+    // 加载章节内容
+    function loadChapter(index) {
+        if (index < 0 || index >= totalChapters) return;
         
-        // 为每个章节创建 manifest 项
-        currentBook.chapters.forEach((chapter, index) => {
-            const id = 'chapter-' + index;
-            bookData.manifest[id] = {
-                id: id,
-                href: id + '.html',
-                mediaType: 'application/xhtml+xml',
-                properties: {}
-            };
-            bookData.spine.push(id);
-        });
+        currentChapter = index;
+        const chapter = currentBook.chapters[index];
+        const frame = document.getElementById('contentFrame');
         
-        // 创建 Book 实例
-        book = new ePub.Book(bookData);
+        if (!frame || !chapter) return;
         
-        // 为每个章节生成 XHTML 内容
-        currentBook.chapters.forEach((chapter, index) => {
-            const id = 'chapter-' + index;
-            const xhtml = generateXhtml(chapter);
-            
-            // 存储内容
-            book.addSpineItem(id, xhtml);
-        });
-        
-        // 渲染书籍
-        const viewerElement = document.getElementById('viewer');
-        
-        rendition = book.renderTo(viewerElement, {
-            width: '100%',
-            height: '100%',
-            spread: 'auto',
-            flow: isPaginated ? 'paginated' : 'scrolled',
-            manager: isPaginated ? 'default' : 'continuous'
-        });
-        
-        // 生成并显示
-        rendition.generate().then(() => {
-            // 显示第一页
-            rendition.display(0);
-            
-            // 隐藏加载中
-            document.getElementById('loadingOverlay').classList.add('hidden');
-            
-            // 监听位置变化
-            rendition.on('relocated', onLocationChange);
-            
-            // 初始化进度
-            updateProgress();
-        }).catch(err => {
-            console.error('渲染失败:', err);
-            // 如果 epub.js 方法失败，回退到简单 HTML 模式
-            fallbackToHtml();
-        });
-    }
-    
-    // ========== 生成 XHTML 内容 ==========
-    function generateXhtml(chapter) {
-        const fontSize = localStorage.getItem('reader_fontsize') || 18;
+        // 获取设置
         const theme = localStorage.getItem('reader_theme') || 'light';
         const font = localStorage.getItem('reader_font') || 'sans';
+        const fontSize = localStorage.getItem('reader_fontsize') || '18';
         
-        let bgColor, textColor, linkColor;
+        // 根据主题设置颜色
+        let bgColor, textColor, linkColor, borderColor;
         
         if (theme === 'dark') {
             bgColor = '#1e1e28';
             textColor = '#c8c8d0';
             linkColor = '#5dade2';
+            borderColor = '#333';
         } else if (theme === 'sepia') {
             bgColor = '#fdf6e3';
             textColor = '#5b4636';
             linkColor = '#8b4513';
+            borderColor = '#d4c4a8';
         } else {
             bgColor = '#ffffff';
             textColor = '#2c2c2c';
             linkColor = '#2980b9';
+            borderColor = '#ddd';
         }
         
-        let fontFamily;
-        if (font === 'serif') fontFamily = "'Noto Serif SC', 'PMingLiU', serif";
-        else if (font === 'ming') fontFamily = "'PMingLiU', serif";
-        else fontFamily = "'Noto Sans SC', sans-serif";
+        // 字体设置
+        const fontFamily = font === 'serif' 
+            ? "'Noto Serif SC', 'PMingLiU', serif" 
+            : "'Noto Sans SC', sans-serif";
         
-        return `<?xml version="1.0" encoding="UTF-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+        // 生成HTML内容
+        const html = `
+<!DOCTYPE html>
+<html>
 <head>
-    <meta charset="UTF-8"/>
-    <title>${chapter.title}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
+        html, body {
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
         body {
             font-family: ${fontFamily};
             font-size: ${fontSize}px;
-            line-height: 1.8;
+            line-height: 1.85;
             color: ${textColor};
-            background-color: ${bgColor};
+            background: ${bgColor};
             padding: 40px 30px;
             max-width: 800px;
             margin: 0 auto;
@@ -263,7 +135,7 @@
             font-weight: 600;
             margin: 35px 0 20px;
             padding-bottom: 10px;
-            border-bottom: 1px solid rgba(128,128,128,0.3);
+            border-bottom: 1px solid ${borderColor};
         }
         
         h3 {
@@ -275,7 +147,7 @@
         p {
             margin-bottom: 1.2em;
             text-align: justify;
-            text-indent: 0;
+            text-indent: 2em;
         }
         
         a {
@@ -289,7 +161,7 @@
         }
         
         li {
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
         
         table {
@@ -308,7 +180,7 @@
         
         td {
             padding: 10px 12px;
-            border: 1px solid rgba(128,128,128,0.3);
+            border: 1px solid ${borderColor};
         }
         
         blockquote {
@@ -326,133 +198,78 @@
             margin: 20px auto;
         }
         
-        .first-letter::first-letter {
-            font-size: 1.5em;
-            font-weight: 700;
-            float: left;
-            margin-right: 8px;
-            line-height: 1;
+        strong {
+            color: ${linkColor};
+        }
+        
+        /* 滚动时保存位置 */
+        .scroll-wrapper {
+            min-height: 100%;
         }
     </style>
 </head>
 <body>
-    <h1>${chapter.title}</h1>
-    ${chapter.content || ''}
+    <div class="scroll-wrapper">
+        <h1>${chapter.title}</h1>
+        ${chapter.content || ''}
+    </div>
+    
+    <script>
+        // 恢复滚动位置
+        const savedScroll = localStorage.getItem('reader_scroll_${currentBook.id}_ch${index}');
+        if (savedScroll) {
+            window.scrollTo(0, parseInt(savedScroll));
+        }
+        
+        // 监听滚动并保存
+        let scrollTimeout;
+        window.addEventListener('scroll', function() {
+            if (scrollTimeout) clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(function() {
+                localStorage.setItem('reader_scroll_${currentBook.id}_ch${index}', window.scrollY);
+            }, 500);
+        });
+    <\/script>
 </body>
 </html>`;
-    }
-    
-    // ========== 回退到简单 HTML 模式 ==========
-    function fallbackToHtml() {
-        console.log('回退到 HTML 模式');
         
-        const container = document.getElementById('viewer');
-        container.innerHTML = `
-            <iframe id="contentFrame" style="width:100%;height:100%;border:none;background:var(--bg-reader);"></iframe>
-        `;
+        frame.srcdoc = html;
         
-        // 显示第一章
-        if (currentBook.chapters.length > 0) {
-            loadChapterHtml(0);
-        }
-        
-        // 隐藏加载中
-        document.getElementById('loadingOverlay').classList.add('hidden');
-        
-        // 监听 iframe 滚动
-        document.getElementById('contentFrame').addEventListener('load', function() {
-            try {
-                const frameDoc = this.contentDocument || this.contentWindow.document;
-                frameDoc.addEventListener('scroll', function() {
-                    updateProgressFromScroll();
-                });
-            } catch(e) {}
-        });
-    }
-    
-    function loadChapterHtml(index) {
-        if (index < 0 || index >= totalChapters) return;
-        
-        currentChapter = index;
-        const chapter = currentBook.chapters[index];
-        
-        const frame = document.getElementById('contentFrame');
-        if (frame && chapter) {
-            const fontSize = localStorage.getItem('reader_fontsize') || 18;
-            const theme = localStorage.getItem('reader_theme') || 'light';
-            const font = localStorage.getItem('reader_font') || 'sans';
-            
-            let bgColor = theme === 'dark' ? '#1e1e28' : (theme === 'sepia' ? '#fdf6e3' : '#ffffff');
-            let textColor = theme === 'dark' ? '#c8c8d0' : (theme === 'sepia' ? '#5b4636' : '#2c2c2c');
-            let linkColor = theme === 'dark' ? '#5dade2' : (theme === 'sepia' ? '#8b4513' : '#2980b9');
-            
-            let fontFamily = font === 'serif' ? "'Noto Serif SC', serif" : 
-                            font === 'ming' ? "'PMingLiU', serif" : 
-                            "'Noto Sans SC', sans-serif";
-            
-            const html = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        body {
-                            font-family: ${fontFamily};
-                            font-size: ${fontSize}px;
-                            line-height: 1.8;
-                            color: ${textColor};
-                            background: ${bgColor};
-                            padding: 30px 20px;
-                            max-width: 800px;
-                            margin: 0 auto;
-                        }
-                        h1 {
-                            font-size: 1.6em;
-                            font-weight: 700;
-                            margin-bottom: 30px;
-                            padding-bottom: 15px;
-                            border-bottom: 2px solid ${linkColor};
-                        }
-                        h2 { font-size: 1.3em; margin: 30px 0 15px; }
-                        h3 { font-size: 1.15em; margin: 25px 0 12px; }
-                        p { margin-bottom: 1.2em; text-align: justify; }
-                        a { color: ${linkColor}; }
-                        ul, ol { margin: 15px 0; padding-left: 25px; }
-                        li { margin-bottom: 6px; }
-                        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                        th, td { padding: 10px; border: 1px solid #ddd; }
-                        th { background: rgba(0,0,0,0.05); }
-                    </style>
-                </head>
-                <body>
-                    <h1>${chapter.title}</h1>
-                    ${chapter.content || ''}
-                </body>
-                </html>
-            `;
-            
-            frame.srcdoc = html;
-        }
-        
+        // 更新进度
         updateProgress();
         updateTocHighlight();
-    }
-    
-    // ========== 位置变化回调 ==========
-    function onLocationChange(location) {
-        if (!location || !location.start) return;
-
-        currentChapter = location.start.index || 0;
-        updateProgress();
-        updateTocHighlight();
-        updateBookmarkButton();
+        updateNavButtons();
         saveProgress();
+        
+        // 关闭侧边栏
+        closeSidebar();
     }
     
-    // ========== 进度更新 ==========
+    // 导航功能
+    function nextChapter() {
+        if (currentChapter < totalChapters - 1) {
+            loadChapter(currentChapter + 1);
+        }
+    }
+    
+    function prevChapter() {
+        if (currentChapter > 0) {
+            loadChapter(currentChapter - 1);
+        }
+    }
+    
+    function seekTo(value) {
+        const index = Math.floor((value / 100) * (totalChapters - 1));
+        loadChapter(index);
+    }
+    
+    function goToChapter(index) {
+        if (index >= 0 && index < totalChapters) {
+            loadChapter(index);
+        }
+    }
+    
+    // 更新进度
     function updateProgress() {
         if (totalChapters === 0) return;
         
@@ -467,75 +284,16 @@
         if (progressText) progressText.textContent = Math.round(progress) + '%';
     }
     
-    function updateProgressFromScroll() {
-        // 用于滚动模式的进度计算
-        try {
-            const frame = document.getElementById('contentFrame');
-            if (!frame) return;
-            
-            const doc = frame.contentDocument || frame.contentWindow.document;
-            const scrollTop = doc.documentElement.scrollTop || doc.body.scrollTop;
-            const scrollHeight = doc.documentElement.scrollHeight || doc.body.scrollHeight;
-            const clientHeight = doc.documentElement.clientHeight || doc.body.clientHeight;
-            
-            if (scrollHeight > clientHeight) {
-                const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
-                
-                document.getElementById('progressBar').style.width = progress + '%';
-                document.getElementById('progressSlider').value = progress;
-                document.getElementById('progressText').textContent = Math.round(progress) + '%';
-                
-                // 保存滚动位置
-                localStorage.setItem('reader_scroll_' + currentBook.id + '_ch' + currentChapter, scrollTop);
-            }
-        } catch(e) {}
-    }
-    
-    // ========== 导航控制 ==========
-    function nextPage() {
-        if (rendition) {
-            rendition.next();
-        } else {
-            // 回退模式
-            if (currentChapter < totalChapters - 1) {
-                loadChapterHtml(currentChapter + 1);
-            }
-        }
-    }
-    
-    function prevPage() {
-        if (rendition) {
-            rendition.prev();
-        } else {
-            // 回退模式
-            if (currentChapter > 0) {
-                loadChapterHtml(currentChapter - 1);
-            }
-        }
-    }
-    
-    function seekTo(value) {
-        const index = Math.floor((value / 100) * totalChapters);
+    // 更新导航按钮
+    function updateNavButtons() {
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
         
-        if (rendition) {
-            rendition.display(index);
-        } else {
-            loadChapterHtml(index);
-        }
+        if (prevBtn) prevBtn.disabled = currentChapter === 0;
+        if (nextBtn) nextBtn.disabled = currentChapter >= totalChapters - 1;
     }
     
-    function goToChapter(index) {
-        if (index >= 0 && index < totalChapters) {
-            if (rendition) {
-                rendition.display(index);
-            } else {
-                loadChapterHtml(index);
-            }
-            closeSidebar();
-        }
-    }
-    
-    // ========== 目录渲染 ==========
+    // 渲染目录
     function renderToc() {
         const tocList = document.getElementById('tocList');
         if (!tocList || !currentBook) return;
@@ -551,6 +309,7 @@
         });
     }
     
+    // 更新目录高亮
     function updateTocHighlight() {
         const items = document.querySelectorAll('.toc-item');
         items.forEach((item, index) => {
@@ -558,51 +317,39 @@
         });
     }
     
-    // ========== 侧边栏 ==========
+    // 侧边栏
     function toggleSidebar(type) {
         const overlay = document.getElementById('sidebarOverlay');
-
+        
         if (type === 'toc') {
-            const sidebar = document.getElementById('tocSidebar');
-            sidebar.classList.toggle('show');
+            document.getElementById('tocSidebar').classList.toggle('show');
             document.getElementById('settingsSidebar').classList.remove('show');
-            document.getElementById('bookmarksSidebar').classList.remove('show');
         } else if (type === 'settings') {
-            const sidebar = document.getElementById('settingsSidebar');
-            sidebar.classList.toggle('show');
+            document.getElementById('settingsSidebar').classList.toggle('show');
             document.getElementById('tocSidebar').classList.remove('show');
-            document.getElementById('bookmarksSidebar').classList.remove('show');
-            // 渲染设置面板中的书签
-            renderBookmarks();
-        } else if (type === 'bookmarks') {
-            const sidebar = document.getElementById('bookmarksSidebar');
-            sidebar.classList.toggle('show');
-            document.getElementById('tocSidebar').classList.remove('show');
-            document.getElementById('settingsSidebar').classList.remove('show');
         }
-
+        
         overlay.classList.toggle('show');
     }
-
+    
     function closeSidebar() {
         document.getElementById('tocSidebar').classList.remove('show');
         document.getElementById('settingsSidebar').classList.remove('show');
-        document.getElementById('bookmarksSidebar').classList.remove('show');
         document.getElementById('sidebarOverlay').classList.remove('show');
     }
     
-    // ========== 设置功能 ==========
+    // 设置功能
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('reader_theme', theme);
         
-        // 更新设置面板状态
+        // 更新按钮状态
         document.querySelectorAll('[data-theme]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === theme);
         });
         
-        // 重新渲染内容
-        reloadContent();
+        // 重新加载当前章节
+        loadChapter(currentChapter);
     }
     
     function setFont(font) {
@@ -613,64 +360,31 @@
             btn.classList.toggle('active', btn.dataset.font === font);
         });
         
-        reloadContent();
+        loadChapter(currentChapter);
     }
     
     function setFontSize(size) {
         localStorage.setItem('reader_fontsize', size);
         document.getElementById('fontSizeSlider').value = size;
-        reloadContent();
+        loadChapter(currentChapter);
     }
     
-    function setReadMode(mode) {
-        isPaginated = mode === 'paginated';
-        
-        document.querySelectorAll('[data-mode]').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.mode === mode);
-        });
-        
-        // 重新初始化书籍
-        document.getElementById('loadingOverlay').classList.remove('hidden');
-        
-        if (rendition) {
-            rendition.destroy();
-            book = null;
-        }
-        
-        createVirtualEpub();
-    }
-    
-    function reloadContent() {
-        // 重新加载当前章节以应用新设置
-        document.getElementById('loadingOverlay').classList.remove('hidden');
-        
-        if (rendition) {
-            rendition.destroy();
-            book = null;
-        }
-        
-        createVirtualEpub();
-    }
-    
-    // ========== 主题初始化 ==========
+    // 主题初始化
     function initTheme() {
         const savedTheme = localStorage.getItem('reader_theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
-
+        
         document.querySelectorAll('[data-theme]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === savedTheme);
         });
     }
-
+    
     function initFontSize() {
-        // 检测移动端
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const defaultSize = isMobile ? '16' : '18';
-        const saved = localStorage.getItem('reader_fontsize') || defaultSize;
+        const saved = localStorage.getItem('reader_fontsize') || '18';
         document.getElementById('fontSizeSlider').value = saved;
     }
     
-    // ========== 进度保存/恢复 ==========
+    // 进度保存/恢复
     function saveProgress() {
         if (!currentBook) return;
         
@@ -697,23 +411,20 @@
         } catch(e) {}
     }
     
-    // ========== 键盘导航 ==========
+    // 键盘导航
     function setupKeyboardNav() {
         document.addEventListener('keydown', function(e) {
-            // 避免在输入框中触发
             if (e.target.tagName === 'INPUT') return;
             
             switch(e.key) {
                 case 'ArrowRight':
                 case 'ArrowDown':
                 case ' ':
-                case 'PageDown':
                     nextPage();
                     e.preventDefault();
                     break;
                 case 'ArrowLeft':
                 case 'ArrowUp':
-                case 'PageUp':
                     prevPage();
                     e.preventDefault();
                     break;
@@ -724,14 +435,18 @@
         });
     }
     
-    // ========== 返回 ==========
+    function nextPage() { nextChapter(); }
+    function prevPage() { prevChapter(); }
+    
+    // 返回
     function goBack() {
         window.location.href = './index.html';
     }
     
-    // ========== 错误处理 ==========
+    // 错误显示
     function showError(msg) {
-        document.getElementById('loadingOverlay').innerHTML = `
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.innerHTML = `
             <div style="color: #e74c3c; text-align: center;">
                 <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
                 <div>${msg}</div>
@@ -739,151 +454,21 @@
         `;
     }
     
-    // ========== 书签功能 ==========
-    function getBookmarksKey() {
-        if (!currentBook) return 'reader_bookmarks';
-        return 'reader_bookmarks_' + currentBook.id;
-    }
-
-    function getBookmarks() {
-        try {
-            const saved = localStorage.getItem(getBookmarksKey());
-            return saved ? JSON.parse(saved) : [];
-        } catch(e) {
-            return [];
-        }
-    }
-
-    function saveBookmarks(bookmarks) {
-        localStorage.setItem(getBookmarksKey(), JSON.stringify(bookmarks));
-    }
-
-    function addBookmark() {
-        if (!currentBook) return;
-
-        const bookmarks = getBookmarks();
-        const chapter = currentBook.chapters[currentChapter];
-        if (!chapter) return;
-
-        // 检查是否已存在
-        const exists = bookmarks.some(b => b.chapterIndex === currentChapter);
-        if (exists) return;
-
-        const bookmark = {
-            chapterIndex: currentChapter,
-            chapterTitle: chapter.title,
-            timestamp: Date.now()
-        };
-
-        bookmarks.push(bookmark);
-        saveBookmarks(bookmarks);
-
-        updateBookmarkButton();
-        renderBookmarks();
-    }
-
-    function removeBookmark(chapterIndex) {
-        let bookmarks = getBookmarks();
-        bookmarks = bookmarks.filter(b => b.chapterIndex !== chapterIndex);
-        saveBookmarks(bookmarks);
-
-        updateBookmarkButton();
-        renderBookmarks();
-    }
-
-    function isCurrentPageBookmarked() {
-        const bookmarks = getBookmarks();
-        return bookmarks.some(b => b.chapterIndex === currentChapter);
-    }
-
-    function updateBookmarkButton() {
-        const btn = document.getElementById('bookmarkBtn');
-        if (!btn) return;
-
-        if (isCurrentPageBookmarked()) {
-            btn.classList.add('active');
-            btn.textContent = '🏷';
-        } else {
-            btn.classList.remove('active');
-            btn.textContent = '🔖';
-        }
-    }
-
-    function toggleBookmark() {
-        if (isCurrentPageBookmarked()) {
-            removeBookmark(currentChapter);
-        } else {
-            addBookmark();
-        }
-    }
-
-    function renderBookmarks() {
-        const bookmarks = getBookmarks();
-        const list1 = document.getElementById('bookmarksList');
-        const list2 = document.getElementById('settingsBookmarksList');
-        const noBookmarks = document.getElementById('noBookmarks');
-
-        // 渲染专门的书签侧边栏
-        if (list1) {
-            list1.innerHTML = '';
-            bookmarks.forEach(bm => {
-                const li = document.createElement('li');
-                li.className = 'toc-item';
-                li.onclick = () => goToChapter(bm.chapterIndex);
-                li.innerHTML = `
-                    <span class="num">${bm.chapterIndex + 1}</span>
-                    ${bm.chapterTitle}
-                    <span style="margin-left:auto;color:#e74c3c;font-size:18px;" onclick="event.stopPropagation();removeBookmark(${bm.chapterIndex})">×</span>
-                `;
-                list1.appendChild(li);
-            });
-        }
-
-        // 渲染设置面板中的书签
-        if (list2) {
-            if (bookmarks.length === 0) {
-                list2.innerHTML = '<div style="padding:10px 0;color:var(--text-secondary);font-size:13px;">暂无书签</div>';
-            } else {
-                list2.innerHTML = '<div class="settings-options" id="settingsBookmarksOptions"></div>';
-                const options = document.getElementById('settingsBookmarksOptions');
-                bookmarks.forEach(bm => {
-                    const btn = document.createElement('button');
-                    btn.className = 'settings-option';
-                    btn.style.marginBottom = '4px';
-                    btn.onclick = () => goToChapter(bm.chapterIndex);
-                    btn.innerHTML = `${bm.chapterIndex + 1}. ${bm.chapterTitle}`;
-                    options.appendChild(btn);
-                });
-            }
-        }
-
-        // 显示/隐藏"暂无书签"提示
-        if (noBookmarks) {
-            noBookmarks.style.display = bookmarks.length === 0 ? 'block' : 'none';
-        }
-    }
-
-    function toggleBookmarkSidebar() {
-        const sidebar = document.getElementById('bookmarksSidebar');
-        sidebar.classList.toggle('show');
-        document.getElementById('tocSidebar').classList.remove('show');
-        document.getElementById('settingsSidebar').classList.remove('show');
-        document.getElementById('sidebarOverlay').classList.toggle('show');
-    }
-
-    // ========== 暴露全局函数 ==========
+    // 暴露全局函数
     window.goToChapter = goToChapter;
-    window.nextPage = nextPage;
-    window.prevPage = prevPage;
+    window.nextChapter = nextChapter;
+    window.prevChapter = prevChapter;
     window.seekTo = seekTo;
     window.toggleSidebar = toggleSidebar;
     window.closeSidebar = closeSidebar;
     window.setTheme = setTheme;
     window.setFont = setFont;
     window.setFontSize = setFontSize;
-    window.setReadMode = setReadMode;
     window.goBack = goBack;
-    window.toggleBookmark = toggleBookmark;
-    window.removeBookmark = removeBookmark;
-
+    
+    // 隐藏加载中
+    setTimeout(function() {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+    }, 500);
+    
 })();
