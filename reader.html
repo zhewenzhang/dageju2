@@ -3,81 +3,464 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>閱讀器 - E-Book Reader</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>《大棋局 2》- 閱讀器</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/reader.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-content: #f8f6f0;
+            --text-primary: #e8e8e8;
+            --text-secondary: #a0a0a0;
+            --text-content: #2c2c2c;
+            --accent: #3498db;
+            --header-bg: rgba(22, 33, 62, 0.95);
+            --sidebar-width: 300px;
+            --font-size: 18px;
+        }
+        
+        [data-theme="light"] {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --bg-content: #ffffff;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --text-content: #333333;
+            --accent: #2980b9;
+            --header-bg: rgba(255, 255, 255, 0.95);
+        }
+        
+        [data-theme="sepia"] {
+            --bg-primary: #f4ecd8;
+            --bg-secondary: #e8dcc8;
+            --bg-content: #fdf6e3;
+            --text-primary: #5b4636;
+            --text-secondary: #8b7355;
+            --text-content: #5b4636;
+            --header-bg: rgba(244, 236, 216, 0.95);
+        }
+        
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 顶部导航栏 */
+        .reader-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: var(--header-bg);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .header-left, .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .header-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: var(--text-primary);
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .header-btn:hover {
+            background: var(--accent);
+        }
+        
+        .book-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        /* 进度条 */
+        .progress-bar {
+            position: fixed;
+            top: 56px;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #e74c3c, #3498db);
+            transition: width 0.3s;
+            z-index: 999;
+        }
+        
+        /* 主阅读区域 */
+        .reader-content {
+            position: fixed;
+            top: 59px;
+            left: 0;
+            right: 0;
+            bottom: 60px;
+            background: var(--bg-content);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 30px 20px;
+            transition: all 0.3s;
+        }
+        
+        .reader-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .reader-content::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+        
+        .reader-content::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+        
+        /* 章节内容容器 */
+        .chapter-container {
+            max-width: 800px;
+            margin: 0 auto;
+            color: var(--text-content);
+        }
+        
+        .chapter-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e74c3c;
+        }
+        
+        [data-theme="light"] .chapter-title,
+        [data-theme="sepia"] .chapter-title {
+            color: var(--text-content);
+        }
+        
+        .chapter-body {
+            font-size: var(--font-size);
+            line-height: 1.9;
+        }
+        
+        .chapter-body h2 {
+            font-size: 22px;
+            margin: 35px 0 20px;
+            color: #2c3e50;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        [data-theme="sepia"] .chapter-body h2 {
+            color: #5b4636;
+            border-color: #d4c4a8;
+        }
+        
+        .chapter-body h3 {
+            font-size: 19px;
+            margin: 25px 0 15px;
+            color: #34495e;
+        }
+        
+        [data-theme="sepia"] .chapter-body h3 {
+            color: #6b5548;
+        }
+        
+        .chapter-body p {
+            margin-bottom: 18px;
+            text-align: justify;
+        }
+        
+        .chapter-body ul, .chapter-body ol {
+            margin: 20px 0;
+            padding-left: 30px;
+        }
+        
+        .chapter-body li {
+            margin-bottom: 10px;
+        }
+        
+        .chapter-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 15px;
+        }
+        
+        .chapter-body th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        [data-theme="sepia"] .chapter-body th {
+            background: #5b4636;
+        }
+        
+        .chapter-body td {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+        }
+        
+        .chapter-body tr:nth-child(even) {
+            background: rgba(0,0,0,0.02);
+        }
+        
+        .chapter-body strong {
+            color: #e74c3c;
+        }
+        
+        /* 章节导航 */
+        .chapter-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--header-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .nav-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: 'Noto Serif SC', serif;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .nav-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+        }
+        
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .chapter-info {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        /* 侧边目录 */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1001;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .sidebar-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: -320px;
+            top: 0;
+            width: 320px;
+            height: 100%;
+            background: var(--bg-secondary);
+            z-index: 1002;
+            transition: left 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar.show {
+            left: 0;
+        }
+        
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-header h3 {
+            font-size: 16px;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 28px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chapter-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 0;
+        }
+        
+        .chapter-item {
+            padding: 0;
+        }
+        
+        .chapter-link {
+            display: block;
+            padding: 14px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .chapter-link:hover {
+            background: rgba(52, 152, 219, 0.15);
+            color: var(--text-primary);
+        }
+        
+        .chapter-link.active {
+            background: rgba(231, 76, 60, 0.2);
+            color: var(--text-primary);
+            border-left-color: #e74c3c;
+        }
+        
+        .chapter-link .num {
+            font-weight: 600;
+            margin-right: 8px;
+            color: #e74c3c;
+        }
+        
+        /* 字体大小 */
+        .font-small { --font-size: 16px; }
+        .font-large { --font-size: 20px; }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .chapter-title {
+                font-size: 22px;
+            }
+            
+            .chapter-body {
+                font-size: 16px;
+            }
+            
+            .chapter-body h2 {
+                font-size: 18px;
+            }
+            
+            .chapter-body h3 {
+                font-size: 16px;
+            }
+            
+            .sidebar {
+                width: 280px;
+            }
+            
+            .nav-btn {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- 顶部工具栏 -->
+    <!-- 顶部导航 -->
     <header class="reader-header">
         <div class="header-left">
-            <button class="header-btn back-btn" onclick="goBack()" title="返回書庫">
-                ←
-            </button>
-            <button class="header-btn menu-btn" onclick="toggleSidebar()" title="目錄">
-                ☰
-            </button>
-            <div class="book-title">
-                <span id="bookTitle">大棋局</span><span class="num">2</span>
-            </div>
+            <button class="header-btn" onclick="goBack()" title="返回">←</button>
+            <button class="header-btn" onclick="toggleSidebar()" title="目录">☰</button>
+            <span class="book-title" id="bookTitle">加载中...</span>
         </div>
         <div class="header-right">
-            <button class="header-btn" onclick="toggleFontSize()" title="調整字體大小">
-                <span id="fontSizeIcon">A</span>
-            </button>
-            <button class="header-btn" onclick="toggleTheme()" title="切換主題">
-                <span id="themeIcon">🌙</span>
-            </button>
-            <button class="header-btn" onclick="toggleScrollMode()" title="切換閱讀模式">
-                <span id="modeIcon">📜</span>
-            </button>
+            <button class="header-btn" onclick="adjustFontSize()" title="字体大小">A</button>
+            <button class="header-btn" onclick="toggleTheme()" title="主题">◐</button>
         </div>
     </header>
-
+    
     <!-- 进度条 -->
-    <div class="progress-bar-container">
-        <div class="progress-bar" id="progressBar"></div>
-    </div>
-
+    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+    
     <!-- 侧边目录 -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h3>📖 目錄</h3>
+            <h3>📖 目录</h3>
             <button class="close-btn" onclick="toggleSidebar()">×</button>
         </div>
-        <div class="chapter-list" id="chapterList">
-            <!-- 章节列表将动态加载 -->
-        </div>
+        <div class="chapter-list" id="chapterList"></div>
     </aside>
-
-    <!-- 主阅读区 -->
-    <main class="reader-main" id="readerMain">
-        <div class="pages-container" id="pagesContainer">
-            <!-- 页面将动态加载 -->
+    
+    <!-- 阅读内容区 -->
+    <main class="reader-content" id="readerContent">
+        <div class="chapter-container" id="chapterContainer">
+            <!-- 章节内容将在这里加载 -->
         </div>
     </main>
-
-    <!-- 翻页按钮 -->
-    <div class="page-nav-buttons" id="pageNavButtons">
-        <button class="nav-btn prev-btn" onclick="prevPage()" id="prevBtn" disabled>
-            <span>←</span>
-            <span class="btn-text">上一頁</span>
+    
+    <!-- 底部导航 -->
+    <nav class="chapter-nav">
+        <button class="nav-btn" id="prevBtn" onclick="prevChapter()">
+            <span>←</span> 上一章
         </button>
-        <button class="nav-btn next-btn" onclick="nextPage()" id="nextBtn">
-            <span class="btn-text">下一頁</span>
-            <span>→</span>
+        <div class="chapter-info">
+            <span id="chapterInfo">第 1 章 / 共 8 章</span>
+        </div>
+        <button class="nav-btn" id="nextBtn" onclick="nextChapter()">
+            下一章 <span>→</span>
         </button>
-    </div>
-
-    <!-- 阅读模式提示 -->
-    <div class="mode-toast" id="modeToast">
-        <span id="modeToastText">翻頁模式</span>
-    </div>
-
-    <!-- 引入书籍配置 -->
-    <script src="./js/dageju2-config.js?v=20250405"></script>
-    <!-- 引入阅读器脚本 -->
-    <script src="./js/reader.js?v=20250405"></script>
+    </nav>
+    
+    <!-- 书籍配置 -->
+    <script src="./js/dageju2-config.js?v=20250405b"></script>
+    <!-- 阅读器脚本 -->
+    <script src="./js/reader.js?v=20250405b"></script>
 </body>
 </html>
