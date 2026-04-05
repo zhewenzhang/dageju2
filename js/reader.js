@@ -51,9 +51,85 @@
         
         // 恢复进度
         restoreProgress();
-        
+
+        // 初始化书签
+        renderBookmarks();
+        updateBookmarkButton();
+
         // 键盘事件
         setupKeyboardNav();
+
+        // 触摸滑动翻页
+        setupTouchSwipe();
+
+        // 双击切换导航栏显示
+        setupDoubleTap();
+    }
+
+    // ========== 双击切换导航栏显示 ==========
+    function setupDoubleTap() {
+        const container = document.getElementById('viewer');
+        if (!container) return;
+
+        let lastTap = 0;
+        container.addEventListener('touchend', function(e) {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+
+            if (tapLength < 300 && tapLength > 0) {
+                // 双击事件 - 切换导航栏
+                toggleHeaderFooter();
+                e.preventDefault();
+            }
+            lastTap = currentTime;
+        }, { passive: false });
+    }
+
+    function toggleHeaderFooter() {
+        const header = document.getElementById('readerHeader');
+        const footer = document.getElementById('readerFooter');
+
+        header.classList.toggle('hidden');
+        footer.classList.toggle('hidden');
+    }
+
+    // ========== 触摸滑动翻页 ==========
+    function setupTouchSwipe() {
+        const container = document.getElementById('viewer');
+        if (!container) return;
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+        const minSwipeDistance = 50;
+
+        container.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        container.addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            // 检查是否为水平滑动（忽略垂直滑动）
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                if (deltaX < 0) {
+                    // 向左滑 -> 下一页
+                    nextPage();
+                } else {
+                    // 向右滑 -> 上一页
+                    prevPage();
+                }
+            }
+        }
     }
     
     // ========== 创建虚拟 EPUB ==========
@@ -368,10 +444,11 @@
     // ========== 位置变化回调 ==========
     function onLocationChange(location) {
         if (!location || !location.start) return;
-        
+
         currentChapter = location.start.index || 0;
         updateProgress();
         updateTocHighlight();
+        updateBookmarkButton();
         saveProgress();
     }
     
@@ -484,23 +561,33 @@
     // ========== 侧边栏 ==========
     function toggleSidebar(type) {
         const overlay = document.getElementById('sidebarOverlay');
-        
+
         if (type === 'toc') {
             const sidebar = document.getElementById('tocSidebar');
             sidebar.classList.toggle('show');
             document.getElementById('settingsSidebar').classList.remove('show');
+            document.getElementById('bookmarksSidebar').classList.remove('show');
         } else if (type === 'settings') {
             const sidebar = document.getElementById('settingsSidebar');
             sidebar.classList.toggle('show');
             document.getElementById('tocSidebar').classList.remove('show');
+            document.getElementById('bookmarksSidebar').classList.remove('show');
+            // 渲染设置面板中的书签
+            renderBookmarks();
+        } else if (type === 'bookmarks') {
+            const sidebar = document.getElementById('bookmarksSidebar');
+            sidebar.classList.toggle('show');
+            document.getElementById('tocSidebar').classList.remove('show');
+            document.getElementById('settingsSidebar').classList.remove('show');
         }
-        
+
         overlay.classList.toggle('show');
     }
-    
+
     function closeSidebar() {
         document.getElementById('tocSidebar').classList.remove('show');
         document.getElementById('settingsSidebar').classList.remove('show');
+        document.getElementById('bookmarksSidebar').classList.remove('show');
         document.getElementById('sidebarOverlay').classList.remove('show');
     }
     
@@ -569,14 +656,17 @@
     function initTheme() {
         const savedTheme = localStorage.getItem('reader_theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
-        
+
         document.querySelectorAll('[data-theme]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === savedTheme);
         });
     }
-    
+
     function initFontSize() {
-        const saved = localStorage.getItem('reader_fontsize') || '18';
+        // 检测移动端
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const defaultSize = isMobile ? '16' : '18';
+        const saved = localStorage.getItem('reader_fontsize') || defaultSize;
         document.getElementById('fontSizeSlider').value = saved;
     }
     
@@ -649,6 +739,138 @@
         `;
     }
     
+    // ========== 书签功能 ==========
+    function getBookmarksKey() {
+        if (!currentBook) return 'reader_bookmarks';
+        return 'reader_bookmarks_' + currentBook.id;
+    }
+
+    function getBookmarks() {
+        try {
+            const saved = localStorage.getItem(getBookmarksKey());
+            return saved ? JSON.parse(saved) : [];
+        } catch(e) {
+            return [];
+        }
+    }
+
+    function saveBookmarks(bookmarks) {
+        localStorage.setItem(getBookmarksKey(), JSON.stringify(bookmarks));
+    }
+
+    function addBookmark() {
+        if (!currentBook) return;
+
+        const bookmarks = getBookmarks();
+        const chapter = currentBook.chapters[currentChapter];
+        if (!chapter) return;
+
+        // 检查是否已存在
+        const exists = bookmarks.some(b => b.chapterIndex === currentChapter);
+        if (exists) return;
+
+        const bookmark = {
+            chapterIndex: currentChapter,
+            chapterTitle: chapter.title,
+            timestamp: Date.now()
+        };
+
+        bookmarks.push(bookmark);
+        saveBookmarks(bookmarks);
+
+        updateBookmarkButton();
+        renderBookmarks();
+    }
+
+    function removeBookmark(chapterIndex) {
+        let bookmarks = getBookmarks();
+        bookmarks = bookmarks.filter(b => b.chapterIndex !== chapterIndex);
+        saveBookmarks(bookmarks);
+
+        updateBookmarkButton();
+        renderBookmarks();
+    }
+
+    function isCurrentPageBookmarked() {
+        const bookmarks = getBookmarks();
+        return bookmarks.some(b => b.chapterIndex === currentChapter);
+    }
+
+    function updateBookmarkButton() {
+        const btn = document.getElementById('bookmarkBtn');
+        if (!btn) return;
+
+        if (isCurrentPageBookmarked()) {
+            btn.classList.add('active');
+            btn.textContent = '🏷';
+        } else {
+            btn.classList.remove('active');
+            btn.textContent = '🔖';
+        }
+    }
+
+    function toggleBookmark() {
+        if (isCurrentPageBookmarked()) {
+            removeBookmark(currentChapter);
+        } else {
+            addBookmark();
+        }
+    }
+
+    function renderBookmarks() {
+        const bookmarks = getBookmarks();
+        const list1 = document.getElementById('bookmarksList');
+        const list2 = document.getElementById('settingsBookmarksList');
+        const noBookmarks = document.getElementById('noBookmarks');
+
+        // 渲染专门的书签侧边栏
+        if (list1) {
+            list1.innerHTML = '';
+            bookmarks.forEach(bm => {
+                const li = document.createElement('li');
+                li.className = 'toc-item';
+                li.onclick = () => goToChapter(bm.chapterIndex);
+                li.innerHTML = `
+                    <span class="num">${bm.chapterIndex + 1}</span>
+                    ${bm.chapterTitle}
+                    <span style="margin-left:auto;color:#e74c3c;font-size:18px;" onclick="event.stopPropagation();removeBookmark(${bm.chapterIndex})">×</span>
+                `;
+                list1.appendChild(li);
+            });
+        }
+
+        // 渲染设置面板中的书签
+        if (list2) {
+            if (bookmarks.length === 0) {
+                list2.innerHTML = '<div style="padding:10px 0;color:var(--text-secondary);font-size:13px;">暂无书签</div>';
+            } else {
+                list2.innerHTML = '<div class="settings-options" id="settingsBookmarksOptions"></div>';
+                const options = document.getElementById('settingsBookmarksOptions');
+                bookmarks.forEach(bm => {
+                    const btn = document.createElement('button');
+                    btn.className = 'settings-option';
+                    btn.style.marginBottom = '4px';
+                    btn.onclick = () => goToChapter(bm.chapterIndex);
+                    btn.innerHTML = `${bm.chapterIndex + 1}. ${bm.chapterTitle}`;
+                    options.appendChild(btn);
+                });
+            }
+        }
+
+        // 显示/隐藏"暂无书签"提示
+        if (noBookmarks) {
+            noBookmarks.style.display = bookmarks.length === 0 ? 'block' : 'none';
+        }
+    }
+
+    function toggleBookmarkSidebar() {
+        const sidebar = document.getElementById('bookmarksSidebar');
+        sidebar.classList.toggle('show');
+        document.getElementById('tocSidebar').classList.remove('show');
+        document.getElementById('settingsSidebar').classList.remove('show');
+        document.getElementById('sidebarOverlay').classList.toggle('show');
+    }
+
     // ========== 暴露全局函数 ==========
     window.goToChapter = goToChapter;
     window.nextPage = nextPage;
@@ -661,5 +883,7 @@
     window.setFontSize = setFontSize;
     window.setReadMode = setReadMode;
     window.goBack = goBack;
-    
+    window.toggleBookmark = toggleBookmark;
+    window.removeBookmark = removeBookmark;
+
 })();

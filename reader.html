@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>《大棋局 2》- 閱讀器</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=PMingLiU:wght@400;700&display=swap" rel="stylesheet">
     
@@ -432,24 +432,54 @@
             .book-title {
                 display: none;
             }
-            
+
             .sidebar {
                 width: 100%;
                 right: -100%;
             }
-            
+
             .reader-footer {
                 height: 60px;
                 flex-wrap: wrap;
                 padding: 8px 12px;
                 gap: 4px;
+                padding-bottom: calc(8px + env(safe-area-inset-bottom));
             }
-            
+
             .footer-slider {
                 order: 1;
                 flex: 1 1 100%;
                 max-width: none;
                 margin: 0;
+            }
+
+            .header-btn {
+                width: 44px;
+                height: 44px;
+            }
+
+            .reader-header {
+                height: 52px;
+                padding-top: env(safe-area-inset-top);
+            }
+
+            .reader-container {
+                top: calc(52px + env(safe-area-inset-top));
+            }
+
+            .progress-bar {
+                top: calc(52px + env(safe-area-inset-top));
+            }
+
+            .reader-footer .header-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 24px;
+            }
+
+            .progress-text {
+                font-size: 13px;
+                min-width: 42px;
             }
         }
         
@@ -486,6 +516,7 @@
             <span class="book-title" id="bookTitle">加载中...</span>
         </div>
         <div class="header-right">
+            <button class="header-btn" id="bookmarkBtn" onclick="toggleBookmark()" title="书签">🔖</button>
             <button class="header-btn" onclick="toggleSidebar('settings')" title="设置" id="settingsBtn">⚙</button>
         </div>
     </header>
@@ -526,6 +557,22 @@
         </div>
     </aside>
     
+    <!-- 侧边栏：书签 -->
+    <aside class="sidebar" id="bookmarksSidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">🔖 书签</span>
+            <button class="close-btn" onclick="closeSidebar()">×</button>
+        </div>
+        <div class="sidebar-content">
+            <ul class="toc-list" id="bookmarksList">
+                <!-- 动态生成 -->
+            </ul>
+            <div id="noBookmarks" style="padding:20px;text-align:center;color:var(--text-secondary);font-size:14px;">
+                暂无书签，点击顶部 🔖 按钮添加
+            </div>
+        </div>
+    </aside>
+
     <!-- 侧边栏：设置 -->
     <aside class="sidebar" id="settingsSidebar">
         <div class="sidebar-header">
@@ -533,6 +580,11 @@
             <button class="close-btn" onclick="closeSidebar()">×</button>
         </div>
         <div class="sidebar-content">
+            <!-- 书签列表也显示在设置中 -->
+            <div class="settings-group">
+                <div class="settings-label">我的书签</div>
+                <div id="settingsBookmarksList"></div>
+            </div>
             <div class="settings-panel">
                 <!-- 阅读模式 -->
                 <div class="settings-group">
